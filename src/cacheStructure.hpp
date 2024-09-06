@@ -30,7 +30,7 @@ private:
     std::string hexToBinary(const std::string& hex) {
         std::string binary;
         for (char ch : hex) {
-            int value = (ch >= '0' && ch <= '9') ? ch - '0' : ch - 'A' + 10;
+            int value = (ch >= '0' && ch <= '9') ? ch - '0' : ch - 'a' + 10;
             binary += std::bitset<4>(value).to_string();
         }
         return binary;
