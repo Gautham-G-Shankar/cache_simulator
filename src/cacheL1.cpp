@@ -16,7 +16,7 @@ int main(){
     int associativity = 2;
     int numSets = cachesize / (associativity * blocksize);
     int bitshortAddresses = 0;
-    CacheStructure cache = CacheStructure(blocksize, cachesize, associativity);
+    CacheStructure cacheL1 = CacheStructure(blocksize, cachesize, associativity);
 
 
     // std::cout <<"Cache lines: " << cache.get_cachelines() << std::endl;
@@ -25,8 +25,11 @@ int main(){
 
     if (_file_.is_open()) {
         while(std::getline(_file_,_line_)) {
-            if (_line_.length()>=9) {
-                cache.access(_line_.substr(2, 8), _line_.substr(0,1));
+
+            if (_line_.length()>8) {
+
+                auto [hit, blockIndex] = cacheL1.checkHitOrMiss(_line_.substr(2, 8));
+                cacheL1.accessCache(_line_.substr(2, 8), _line_.substr(0,1), hit, blockIndex);
 
                 // std::cout << "Read Count: " << _line_.substr(0,1) << " " << cache.get_read_count() << std::endl; 
                 // std::cout << "Read Misses: "  << cache.get_read_misses() << std::endl;
@@ -35,7 +38,8 @@ int main(){
             else {
                 bitshortAddresses++;
                 std::string lineVal = "00" + _line_;
-                cache.access(lineVal.substr(2, 8), lineVal.substr(0,1));               
+                auto [hit, blockIndex] = cacheL1.checkHitOrMiss(lineVal.substr(2, 8));
+                cacheL1.accessCache(lineVal.substr(2, 8), lineVal.substr(0,1), hit, blockIndex);            
             }
 
 
@@ -56,17 +60,17 @@ int main(){
 
     // cache.memory();
 
-    std::cout << "Total Read Misses: " << cache.get_read_misses() << std::endl;
-    std::cout << "Total Write Misses: " << cache.get_write_misses() << std::endl; 
-    std::cout << "Total Read Hits: " << cache.get_read_hits() << std::endl;
-    std::cout << "Total Write Hits: " << cache.get_write_hits() << std::endl; 
-    std::cout << "Total Read: " << cache.get_read_count() << std::endl;
-    std::cout << "Total Write: " << cache.get_write_count() << std::endl; 
-    std::cout << "Current Time: " << cache.get_current_time() << std::endl;
+    std::cout << "Total Read Misses: " << cacheL1.get_read_misses() << std::endl;
+    std::cout << "Total Write Misses: " << cacheL1.get_write_misses() << std::endl; 
+    std::cout << "Total Read Hits: " << cacheL1.get_read_hits() << std::endl;
+    std::cout << "Total Write Hits: " << cacheL1.get_write_hits() << std::endl; 
+    std::cout << "Total Read: " << cacheL1.get_read_count() << std::endl;
+    std::cout << "Total Write: " << cacheL1.get_write_count() << std::endl; 
+    std::cout << "Current Time: " << cacheL1.get_current_time() << std::endl;
     std::cout << "BitShort Addresses: " << bitshortAddresses << std::endl;
     // std::cout << "Total Lines: " << number_of_lines << std::endl; 
 
-    cache.memory();
+    cacheL1.memory();
     // CacheStructure cacheL1 = CacheStructure();
     return 0;
 }
