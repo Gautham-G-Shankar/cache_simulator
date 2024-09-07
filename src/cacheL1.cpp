@@ -19,8 +19,6 @@ int main(){
     CacheStructure cacheL1 = CacheStructure(blocksize, cachesize, associativity);
 
 
-    // std::cout <<"Cache lines: " << cache.get_cachelines() << std::endl;
-
     
 
     if (_file_.is_open()) {
@@ -31,13 +29,12 @@ int main(){
                 auto [hit, blockIndex] = cacheL1.checkHitOrMiss(_line_.substr(2, 8));
                 cacheL1.accessCache(_line_.substr(2, 8), _line_.substr(0,1), hit, blockIndex);
 
-                // std::cout << "Read Count: " << _line_.substr(0,1) << " " << cache.get_read_count() << std::endl; 
-                // std::cout << "Read Misses: "  << cache.get_read_misses() << std::endl;
             } 
 
             else {
                 bitshortAddresses++;
-                std::string lineVal = "00" + _line_;
+                std::string lineVal = _line_.substr(0, 1) + " " + "00" + _line_.substr(2, 8);
+                std::cout << "The value is " << lineVal << std::endl;
                 auto [hit, blockIndex] = cacheL1.checkHitOrMiss(lineVal.substr(2, 8));
                 cacheL1.accessCache(lineVal.substr(2, 8), lineVal.substr(0,1), hit, blockIndex);            
             }
@@ -47,18 +44,6 @@ int main(){
      _file_.close();
     }
 
-    // for (int i=0; i<numSets; i++) {
-
-    //     std::cout << "Set   " << i << ":    ";
-
-    //     for (int j=0; j<associativity; j++) {
-    //         std::cout << cache[i][j].tag << " " << cache[i][j].dirty;   
-    //     }
-
-    //     std::cout << "" << std::endl;
-    // }
-
-    // cache.memory();
 
     std::cout << "Total Read Misses: " << cacheL1.get_read_misses() << std::endl;
     std::cout << "Total Write Misses: " << cacheL1.get_write_misses() << std::endl; 
