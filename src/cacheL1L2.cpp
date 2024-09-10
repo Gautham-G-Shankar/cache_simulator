@@ -12,7 +12,7 @@ int main(){
 
     int blocksizeL1 = 16;
     int cachesizeL1 = 1024;
-    int associativityL1 = 2;
+    int associativityL1 = 1;
     int numSetsL1 = cachesizeL1 / (associativityL1 * blocksizeL1);
 
     int blocksizeL2 = 16;
@@ -46,12 +46,12 @@ int main(){
             if (operation == "r") {
                 
                 if (hitL1) {
-                    cacheL1.accessCache(address, "r", true, blockIndexL1);
+                    cacheL1.accessCache(address, "r", true, blockIndexL1, false);
                 }
 
                 else if (!hitL1 && hitL2) {
-                    cacheL1.accessCache(address, "r", false, blockIndexL1);
-                    cacheL2.accessCache(address, "r", true, blockIndexL2);
+                    cacheL1.accessCache(address, "r", false, blockIndexL1, false);
+                    cacheL2.accessCache(address, "r", true, blockIndexL2, false);
 
                     _dirtyTag_ = cacheL1.get_dirty_tag_address();
 
@@ -59,12 +59,14 @@ int main(){
                 }
 
                 else {
-                    cacheL1.accessCache(address, "r", false, blockIndexL1);
-                    cacheL2.accessCache(address, "r", false, blockIndexL2);
+                    cacheL1.accessCache(address, "r", false, blockIndexL1, false);
+                    cacheL2.accessCache(address, "r", false, blockIndexL2, false);
 
                     _dirtyTag_ = cacheL1.get_dirty_tag_address();
 
                     if (cacheL1.get_dirty_hit()) {cacheL2.dirtyWrite(_dirtyTag_);}
+
+
 
                 }
 
@@ -72,19 +74,26 @@ int main(){
 
             else {
                 if (hitL1) {
-                    cacheL1.accessCache(address, "w", true, blockIndexL1);
+                    cacheL1.accessCache(address, "w", true, blockIndexL1, false);
+                    // _dirtyTag_ = cacheL1.get_dirty_tag_address();
 
+                    // if (cacheL1.get_dirty_hit()) {cacheL2.dirtyWrite(_dirtyTag_);}
 
                 }
 
+                // else if (!hitL1 && hitL2) {
+                //     cacheL2.accessCache(address, "w", true, blockIndexL2);
+                // }
 
                 else {
-                    cacheL1.accessCache(address, "w", false, blockIndexL1);
+                    cacheL1.accessCache(address, "w", false, blockIndexL1, false);
                     _dirtyTag_ = cacheL1.get_dirty_tag_address();
 
                     if (cacheL1.get_dirty_hit()) {cacheL2.dirtyWrite(_dirtyTag_);}
 
-                    cacheL2.accessCache(address, "r", hitL2, blockIndexL2);
+                    cacheL2.accessCache(address, "r", hitL2, blockIndexL2, false);
+
+                    // std::cout << "Hit L2: " << hitL2 << std::endl;
 
 
                 }

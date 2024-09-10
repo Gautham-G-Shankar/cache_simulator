@@ -18,9 +18,6 @@ int main(){
     int bitshortAddresses = 0;
     CacheStructure cacheL1 = CacheStructure(blocksize, cachesize, associativity);
 
-
-    
-
     if (_file_.is_open()) {
         while(std::getline(_file_,_line_)) {
 
@@ -36,7 +33,7 @@ int main(){
                 std::string lineVal = _line_.substr(0, 1) + " " + "00" + _line_.substr(2, 8);
                 std::cout << "The value is " << lineVal << std::endl;
                 auto [hit, blockIndex] = cacheL1.checkHitOrMiss(lineVal.substr(2, 8));
-                cacheL1.accessCache(lineVal.substr(2, 8), lineVal.substr(0,1), hit, blockIndex);            
+                cacheL1.accessCache(lineVal.substr(2, 8), lineVal.substr(0,1), hit, blockIndex, false);            
             }
 
 
@@ -53,9 +50,7 @@ int main(){
     std::cout << "Total Write: " << cacheL1.get_write_count() << std::endl; 
     std::cout << "Current Time: " << cacheL1.get_current_time() << std::endl;
     std::cout << "BitShort Addresses: " << bitshortAddresses << std::endl;
-    // std::cout << "Total Lines: " << number_of_lines << std::endl; 
 
     cacheL1.memory();
-    // CacheStructure cacheL1 = CacheStructure();
     return 0;
 }
