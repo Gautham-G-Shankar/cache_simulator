@@ -20,6 +20,8 @@ private:
     std::string dirtyTag;
     bool dirtyHit;
     int dirtyWriteCount;
+    std::string SwapAddress;
+    bool SwapDirty;
 
     struct cacheBlock {
         std::string tag;
@@ -49,10 +51,40 @@ private:
         return value;
     }
 
+
+std::string binaryToHex(const std::string& binary) {
+    
+    int binaryLength = binary.length();
+    
+    int remainder = binaryLength % 4;
+    
+    std::string adjustedBinary = binary;
+
+    if (remainder != 0) {
+        std::string leadingBits = binary.substr(0, remainder);
+        if (leadingBits.find_first_not_of('0') == std::string::npos) {
+            adjustedBinary = binary.substr(remainder);
+        }
+        else {
+            adjustedBinary = std::string(4 - remainder, '0') + binary;
+        }
+    }
+    std::string hexString;
+    for (size_t i = 0; i < adjustedBinary.size(); i += 4) {
+        std::string fourBits = adjustedBinary.substr(i, 4);
+        int decimalValue = std::bitset<4>(fourBits).to_ulong();  
+        hexString += "0123456789abcdef"[decimalValue];  
+    }
+
+    return hexString;
+}
+
 public:
 
+    bool swapValid;
+
     CacheStructure(int blockSize, int cacheSize, int associativity)
-    : blockSize(blockSize) , cacheSize(cacheSize), associativity(associativity), currentTime(0), read_count(0), read_hits(0), read_misses(0), write_count(0), write_hits(0), write_misses(0), dirtyTag(""), dirtyHit(false) {
+    : blockSize(blockSize) , cacheSize(cacheSize), associativity(associativity), currentTime(0), read_count(0), read_hits(0), read_misses(0), write_count(0), write_hits(0), write_misses(0), dirtyTag(""), dirtyHit(false), SwapDirty(false), SwapAddress("") {
         cacheLines = cacheSize / (blockSize * associativity);
         offsetBits = std::log2(blockSize);
         indexBits = std::log2(cacheLines);
@@ -75,6 +107,9 @@ public:
     int get_dirty_writes()  {return dirtyWriteCount;}
     std::string get_dirty_tag_address() {return dirtyTag;}
     bool get_dirty_hit() {return dirtyHit;}
+    bool get_swap_dirty()    {return SwapDirty;}
+    std::string get_swap_address()    {return SwapAddress;}
+    bool get_swap_valid()       {return swapValid;}
 
     std::pair<bool, int> checkHitOrMiss(const std::string& hexAddress) {
         std::string binaryAddress = hexToBinary(hexAddress);
@@ -83,16 +118,26 @@ public:
         std::string index = binaryAddress.substr(tagBits, indexBits);
         int indexValue = binaryToInt(index);
 
+        swapValid = true;
+
         for (int i = 0; i < associativity; i++) {
             if (cache[indexValue][i].valid && cache[indexValue][i].tag == tag) {
                 return {true, i};  
             }
         }
+
+        for (int i = 0; i < associativity; i++) {
+                swapValid = (swapValid && cache[indexValue][i].valid);
+            }
+        
+
         return {false, -1}; 
     }
 
 
-    void accessCache(const std::string& hexAddress, const std::string& operation, bool hit, int blockIndex) {
+
+
+    void accessCache(const std::string& hexAddress, const std::string& operation, bool hit, int blockIndex, bool VC) {
         currentTime++;
 
         std::string binaryAddress = hexToBinary(hexAddress);
@@ -152,6 +197,13 @@ public:
 
             else {dirtyHit = false;}
 
+            if (VC) {
+                std::string SwapAddressBinary = cache[indexValue][lruIndex].tag + cache[indexValue][lruIndex].index + cache[indexValue][lruIndex].offset;
+                SwapAddress = binaryToHex(SwapAddressBinary);
+                SwapDirty = cache[indexValue][lruIndex].dirty;
+            }
+
+
 
             cache[indexValue][lruIndex] = {tag, index, offset, true, (operation == "w"), currentTime};
         }
@@ -208,7 +260,7 @@ public:
 
     void memory() {
     for (int i = 0; i < cacheLines; i++) {
-        std::cout << "Set\t" << i;
+        std::cout << "Set\t" << i << ":\t";
 
         std::vector<cacheBlock> sortedSet = cache[i]; 
         std::sort(sortedSet.begin(), sortedSet.end(), [](const cacheBlock& a, const cacheBlock& b) {
@@ -216,11 +268,111 @@ public:
         });
 
         for (int j = 0; j < associativity; j++) {
+            std::string printAddress = binaryToHex(sortedSet[j].tag);
             char dirtyBit = (sortedSet[j].dirty) ? 'D' : ' ';
-            std::cout << ":\t" << sortedSet[j].tag  << " " << dirtyBit << "\t";
+            std::cout << "\t" << printAddress  << " " << dirtyBit << "\t";
         }
 
         std::cout << std::endl;
     }
 }
+};
+
+
+class FullyAssociativeCache {
+private:
+    int blockSize;
+    int cacheSize;
+    int cacheLines;
+    int currentTime;
+    bool swapDirty;
+    int swapCount;
+    std::string swapAddress;
+
+    
+    struct cacheBlock {
+        std::string address;
+        bool valid;
+        bool dirty;
+        int lastUsed;
+    };
+
+    std::vector<cacheBlock> cache;
+
+public:
+    FullyAssociativeCache(int blockSize, int cacheSize) : blockSize(blockSize), cacheSize(cacheSize), currentTime(0), swapAddress(""), swapDirty(false), swapCount(0) {
+        cacheLines = (cacheSize / 1);
+        
+        cache.resize(cacheLines, {"", false, false, 0});
+    }
+
+    int get_swap_count() {return swapCount;}
+
+    int indexSwap = -1;
+
+    std::pair<bool, int> checkHitOrMiss(const std::string& hexAddress) {
+
+        for (int i = 0; i < cacheLines; i++) {
+            if (cache[i].valid && cache[i].address == hexAddress) {
+
+                indexSwap = i;
+                
+                return {true, i};  
+            }
+        }
+        return {false, -1}; 
+    }
+
+    void allocate(std::string _address_, bool _dirty_, bool hit) {
+        currentTime++;
+
+        if (hit) {
+            cache[indexSwap] = {_address_, true, _dirty_, currentTime};
+            swapCount++;
+        }
+        else {
+        int index = 0;
+        int minIndex = cache[index].lastUsed;
+
+        for (int i = 1; i<cacheLines; i++) {
+            if (!cache[i].valid) {
+                index = i;
+                break;
+            }
+
+            else {
+                if (cache[i].valid && cache[i].lastUsed < minIndex) {
+                    index = i;
+                    minIndex = cache[i].lastUsed;
+                }
+            }
+
+        }
+
+        cache[index] = {_address_, true, _dirty_, currentTime};
+    }
+
+    }
+
+    void memory() {
+
+
+        std::vector<cacheBlock> sortedSet = cache; 
+        std::sort(sortedSet.begin(), sortedSet.end(), [](const cacheBlock& a, const cacheBlock& b) {
+            return a.lastUsed > b.lastUsed;  
+        });
+
+        for (int j = 0; j < cacheLines; j++) {
+
+            std::cout << "Line\t" << j << "\t";
+
+            char dirtyBit = (sortedSet[j].dirty) ? 'D' : ' ';
+            std::cout << "\t" << sortedSet[j].address  << " " << dirtyBit << "\t";
+            std::cout << std::endl;
+        }
+
+
+    
+}
+
 };
