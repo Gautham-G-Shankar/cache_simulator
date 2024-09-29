@@ -31,6 +31,7 @@ int main(int argc, char *argv[]) {
 
     if (!VC && !L2) {
 
+
     CacheStructure cacheL1 = CacheStructure(blockSize, cacheSizeL1, associativityL1);
 
     if (_file_.is_open()) {
@@ -44,6 +45,7 @@ int main(int argc, char *argv[]) {
             } 
 
             else {
+
                 std::string lineVal = _line_.substr(0, 1) + " " + "00" + _line_.substr(2, 8);
                 auto [hit, blockIndex] = cacheL1.checkHitOrMiss(lineVal.substr(2, 8));
                 cacheL1.accessCache(lineVal.substr(2, 8), lineVal.substr(0,1), hit, blockIndex, false);            
@@ -54,13 +56,16 @@ int main(int argc, char *argv[]) {
      _file_.close();
     }
 
+
     float combinedMissrateL1 = (static_cast<float> (cacheL1.get_read_misses() + cacheL1.get_write_misses()) / (cacheL1.get_read_count() + cacheL1.get_write_count()));
     int total_memory_traffic = cacheL1.get_read_misses() + cacheL1.get_write_misses() + cacheL1.get_dirty_writes();
 
     float accessTime, energy, area;
     int result = get_cacti_results(cacheSizeL1, blockSize, associativityL1, &accessTime, &energy, &area);
+
     
     if (result==0) {
+    result++;
 
     
     float AAT = accessTime + static_cast<float>(combinedMissrateL1) * mainMemoryPenalty;
@@ -190,12 +195,16 @@ else if (!VC && L2) {
     float combinedMissrateL1 = (static_cast<float> (cacheL1.get_read_misses() + cacheL1.get_write_misses()) / (cacheL1.get_read_count() + cacheL1.get_write_count()));
     float combinedMissrateL2 = (static_cast<float> (cacheL2.get_read_misses()) / static_cast<float> (cacheL2.get_read_count()));
     int total_memory_traffic = cacheL2.get_read_misses() + cacheL2.get_write_misses() + cacheL2.get_dirty_writes();
-    float missRateL2 =  static_cast<float> (cacheL2.get_read_misses() / cacheL2.get_read_count());
+    float missRateL2 =  static_cast<float> (static_cast<float>(cacheL2.get_read_misses()) / static_cast<float>(cacheL2.get_read_count()));
     float accessTimeL1, energyL1, areaL1;
     float accessTimeL2, energyL2, areaL2;
     int resultL1 = get_cacti_results(cacheSizeL1, blockSize, associativityL1, &accessTimeL1, &energyL1, &areaL1);
     int resultL2 = get_cacti_results(cacheSizeL2, blockSize, associativityL2, &accessTimeL2, &energyL2, &areaL2);
+
+
     if (!resultL1 && !resultL2) {
+    resultL1++;
+    resultL2++;
 
     float AATL2 = accessTimeL2 + static_cast<float>(combinedMissrateL2) * mainMemoryPenalty;
     float AAT = accessTimeL1 + static_cast<float>(combinedMissrateL1) * AATL2;
@@ -211,11 +220,11 @@ else if (!VC && L2) {
     std::cout << "  trace_file:\t\t" << file_name << std::endl;
     std::cout << std::endl;
 
-    std::cout << "===== L1 contents =====" << std::endl;
+    std::cout << "===== L1 contents =====" << resultL1 << std::endl;
     cacheL1.memory();
     std::cout << std::endl;
 
-    std::cout << "===== L2 contents =====" << std::endl;
+    std::cout << "===== L2 contents =====" << resultL2 << std::endl;
     cacheL2.memory();
     std::cout << std::endl;
 
@@ -286,14 +295,9 @@ else if (VC && !L2) {
                 std::string addressVC = cacheL1.get_swap_address();
                 bool dirtyVC = cacheL1.get_swap_dirty();
 
-
-                // if (cacheL1.get_swap_valid()) {
                     cacheVC.allocate(addressVC, dirtyVC, true);
                     totSwaps++;
                     totSwapReq++;
-                    // }
-
-                // cacheVC.memory();
 
             }
 
@@ -302,9 +306,6 @@ else if (VC && !L2) {
                 std::string addressVC = cacheL1.get_swap_address();
                 bool dirtyVC = cacheL1.get_swap_dirty();
 
-                // if (addressVC != "") {cacheVC.allocate(addressVC, dirtyVC, false);}
-
-                // cacheVC.memory();
                 if (cacheL1.get_swap_valid()) {
                     cacheVC.allocate(addressVC, dirtyVC, false);
                     totSwapReq++;
@@ -328,7 +329,8 @@ else if (VC && !L2) {
     int resultL1 = get_cacti_results(cacheSizeL1, blockSize, associativityL1, &accessTimeL1, &energyL1, &areaL1);
     int resultVC = get_cacti_results(VCSize, blockSize, AssociativityVC, &accessTimeVC, &energyVC, &areaVC);
 
-
+    resultL1++;
+    resultVC++;
     if (!resultL1 && !resultVC) {
 
 
@@ -436,10 +438,6 @@ else {
                     std::string addressVC = cacheL1.get_swap_address();
                     bool dirtyVC = cacheL1.get_swap_dirty();
                     cacheVC.allocate(addressVC, dirtyVC, true);
-                    // _dirtyTag_ = cacheL1.get_dirty_tag_address();
-
-                    // if (cacheL1.get_dirty_hit()) {cacheL2.dirtyWrite(_dirtyTag_);} 
-
                     totSwaps++;
                     totSwapReq++;
                 }
@@ -499,9 +497,6 @@ else {
                     }
 
                     cacheL2.accessCache(address, "r", hitL2, blockIndexL2, false);
-                    // _dirtyTag_ = cacheL1.get_dirty_tag_address();
-
-                    // if (cacheL1.get_dirty_hit()) {cacheL2.dirtyWrite(_dirtyTag_);}
 
                     _dirtyTag_ = cacheVC.get_dirty_tag_address();
 
@@ -521,7 +516,6 @@ else {
     }
 
     float combinedMissrateL1 = (static_cast<float> (cacheL1.get_read_misses() + cacheL1.get_write_misses() - totSwaps) / (cacheL1.get_read_count() + cacheL1.get_write_count()));
-    // float combinedMissrateL2 = (static_cast<float> (cacheL2.get_read_misses() + cacheL2.get_write_misses()) / (cacheL2.get_read_count() + cacheL2.get_write_count()));
     float MissrateL1 = (static_cast<float> (cacheL1.get_read_misses() + cacheL1.get_write_misses()) / (cacheL1.get_read_count() + cacheL1.get_write_count()));
     int total_memory_traffic = cacheL2.get_read_misses() + cacheL2.get_write_misses() + cacheL2.get_dirty_writes();
     float missRateL2 =  static_cast<float> ( static_cast<float> (cacheL2.get_read_misses()) / static_cast<float> (cacheL2.get_read_count()));
@@ -536,6 +530,10 @@ else {
     float swapRequestRate = static_cast<float>(totSwapReq / static_cast<float>(cacheL1.get_read_count() + cacheL1.get_write_count()));
     float VCHitRate = static_cast<float> (static_cast<float> (totSwaps) / static_cast<float> (totSwapReq));
 
+    resultL1++;
+    resultL2++;
+    resultVC++;
+
 
     if (!resultL1 && !resultL2 && !resultVC) {
 
@@ -544,6 +542,8 @@ else {
     float AAT = accessTimeL1 + static_cast<float>(MissrateL1) * AATVC;
     float energyDelayProduct = (energyL1* static_cast<float>(cacheL1.get_read_misses() + cacheL1.get_read_count() + cacheL1.get_write_count() + cacheL1.get_write_misses()) + 0.05* static_cast<float>(cacheL2.get_read_misses() + cacheL2.get_write_misses() + cacheL2.get_dirty_writes()) + energyL2 * static_cast<float>(cacheL2.get_read_misses() + cacheL2.get_read_count() + cacheL2.get_write_count() + cacheL2.get_write_misses()) + 2*totSwapReq*energyVC)*AAT * 100000.0f;
     float area = areaL1 + areaL2 + areaVC;
+
+
 
 
     std::cout << "===== Simulator configuration =====" << std::endl;

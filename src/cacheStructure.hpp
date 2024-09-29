@@ -433,7 +433,6 @@ public:
         else {dirtyHit = false;}
 
         cache[index] = {tag, offset, true, _dirty_, currentTime};
-        // std::cout << "Victim Cache Line: " << index << "\t" << cache[index].address << "LRU: " << cache[index].lastUsed << std::endl; 
     }
 
 
